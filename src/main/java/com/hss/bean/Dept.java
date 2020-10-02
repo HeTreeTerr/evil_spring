@@ -6,6 +6,14 @@ public class Dept {
 
     private String deptName;
 
+    public Dept() {
+    }
+
+    public Dept(Long id, String deptName) {
+        this.id = id;
+        this.deptName = deptName;
+    }
+
     public Long getId() {
         return id;
     }

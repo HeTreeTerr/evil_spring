@@ -15,6 +15,6 @@ public class DeptServiceImpl implements DeptService {
     @Override
     public Dept findDeptById(Long id) {
         System.out.println("执行方法--查找部门");
-        return null;
+        return new Dept(id,"研发部");
     }
 }
