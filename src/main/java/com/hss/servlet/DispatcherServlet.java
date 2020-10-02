@@ -26,19 +26,13 @@ public class DispatcherServlet extends HttpServlet {
     private AbstractFactory abstractFactory = null;
 
     public void init() throws ServletException {
-        try {
-            abstractFactory = new FactoryBean();
-            //1.读取单例bean放入工厂
-            abstractFactory.initSingletonBean();
+        //1.读取单例bean放入工厂
+        abstractFactory = new FactoryBean();
 
-            try {
-                loadHandlerMapping();
-            } catch (ClassNotFoundException e) {
-                e.printStackTrace();
-            }
-        } catch (IOException e) {
+        try {
+            loadHandlerMapping();
+        } catch (ClassNotFoundException e) {
             e.printStackTrace();
-            System.out.println("初始话失败");
         }
     }
 

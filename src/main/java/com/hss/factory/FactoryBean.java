@@ -26,7 +26,19 @@ public class FactoryBean implements AbstractFactory{
 
     private static String scanPackage = null;
 
-    public void initSingletonBean() throws IOException {
+    public FactoryBean() {
+        try {
+            refresh();
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+    }
+
+    private void refresh() throws IOException {
+        initSingletonBean();
+    }
+
+    private void initSingletonBean() throws IOException {
         //1.读取配置文件
         scanPackage = GridProperties.SCAN_PACKAGE;
         //2.扫描该包下的所有class文件

@@ -6,8 +6,6 @@ import java.util.Map;
 
 public interface AbstractFactory {
 
-    public void initSingletonBean() throws IOException;
-
     public Object getBeanByBeanName();
 
     public Map<String,Object> getBeanMap();
