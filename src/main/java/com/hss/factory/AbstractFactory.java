@@ -6,7 +6,7 @@ import java.util.Map;
 
 public interface AbstractFactory {
 
-    public Object getBeanByBeanName();
+    public Object getBeanByBeanName(String beanName);
 
     public Map<String,Object> getBeanMap();
 

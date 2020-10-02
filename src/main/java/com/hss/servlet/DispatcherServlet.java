@@ -84,7 +84,12 @@ public class DispatcherServlet extends HttpServlet {
                     continue;
                 }
                 String value = method.getAnnotation(RequestMapping.class).name();
-                handlerMapping.put((aClass.getAnnotation(RequestMapping.class).name()+"/"+ value).replaceAll("/+","/"),method);
+                //判断类上有没有RequestMapping标签
+                if(!aClass.isAnnotationPresent(RequestMapping.class)){
+                    handlerMapping.put(("/"+ value).replaceAll("/+","/"),method);
+                }else {
+                    handlerMapping.put((aClass.getAnnotation(RequestMapping.class).name()+"/"+ value).replaceAll("/+","/"),method);
+                }
             }
         }
 

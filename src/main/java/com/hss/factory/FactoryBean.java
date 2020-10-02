@@ -58,7 +58,12 @@ public class FactoryBean implements AbstractFactory{
     }
 
     @Override
-    public Object getBeanByBeanName() {
+    public Object getBeanByBeanName(String beanName) {
+        if(null != beanMap && beanMap.size() > 0){
+            if(beanMap.containsKey(beanName)){
+                return beanMap.get(beanName);
+            }
+        }
         return null;
     }
 
@@ -110,6 +115,10 @@ public class FactoryBean implements AbstractFactory{
             String beanName = this.createBeanName(aClass,className);
             //先从缓存工厂中拿，没有再去生产
             if(null != beanName && !"".equals(beanName)){
+                if(beanMap.containsKey(beanName)){
+                    //如果缓存中已存在该beanName
+                    throw new RuntimeException(beanName + "已存在于容器中，不能重复注入");
+                }
                 if(beanMapCache.containsKey(beanName)){
                     beanMap.put(beanName,beanMapCache.get(beanName));
                     beanMapCache.remove(beanName);
@@ -134,6 +143,10 @@ public class FactoryBean implements AbstractFactory{
         String beanName = this.createBeanName(aClass,className);
 
         if(null != beanName && !"".equals(beanName)){
+            if(beanMapCache.containsKey(beanName)){
+                //如果缓存中已存在该beanName
+                throw new RuntimeException(beanName + "已存在于容器中，不能重复注入");
+            }
             beanMapCache.put(beanName,aClass.newInstance());
         }
         //处理Autowired注解
