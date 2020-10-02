@@ -22,6 +22,8 @@ public class FactoryBean implements AbstractFactory{
 
     private static Map<String,Object> beanMapCache = new LinkedHashMap<String, Object>();
 
+    private static Set<String> budingClass = new HashSet<String>();
+
     private List<String>  classNames = new ArrayList<>();
 
     private static String scanPackage = null;
@@ -122,13 +124,14 @@ public class FactoryBean implements AbstractFactory{
                 if(beanMapCache.containsKey(beanName)){
                     beanMap.put(beanName,beanMapCache.get(beanName));
                     beanMapCache.remove(beanName);
+                    budingClass.remove(aClass.getName());
                 }else{
                     beanMap.put(beanName,aClass.newInstance());
                 }
             }
             //处理Autowired注解
             try {
-                autowiredAnnotationHandler(aClass,className);
+                autowiredAnnotationHandler(aClass,beanName);
             } catch (IllegalAccessException e) {
                 e.printStackTrace();
             }
@@ -141,17 +144,20 @@ public class FactoryBean implements AbstractFactory{
         String className = aClass.getSimpleName();
         boolean isAnnotation = aClass.isAnnotation();
         String beanName = this.createBeanName(aClass,className);
-
+        if(budingClass.contains(aClass.getName())){
+            return;
+        }
         if(null != beanName && !"".equals(beanName)){
             if(beanMapCache.containsKey(beanName)){
                 //如果缓存中已存在该beanName
                 throw new RuntimeException(beanName + "已存在于容器中，不能重复注入");
             }
             beanMapCache.put(beanName,aClass.newInstance());
+            budingClass.add(aClass.getName());
         }
         //处理Autowired注解
         try {
-            autowiredAnnotationHandler(aClass,className);
+            autowiredAnnotationHandler(aClass,beanName);
         } catch (IllegalAccessException e) {
             e.printStackTrace();
         }
@@ -199,7 +205,7 @@ public class FactoryBean implements AbstractFactory{
         return beanName;
     }
 
-    private void autowiredAnnotationHandler(Class<?> aClass,String className) throws IllegalAccessException, InstantiationException {
+    private void autowiredAnnotationHandler(Class<?> aClass,String beanName) throws IllegalAccessException, InstantiationException {
 
         /*获得域*/
         Field[]fields=aClass.getDeclaredFields();
@@ -211,8 +217,8 @@ public class FactoryBean implements AbstractFactory{
             for (Annotation ann:anns) {
                 if(ann instanceof Autowired){
                     Object annObj = beanMap.get(f.getName());
+                    Class c2= (Class) f.getGenericType();
                     if(null == annObj){//bean还没有生产出
-                        Class c2= (Class) f.getGenericType();
                         ////生产一个出来
                         if(c2.isInterface()){//如果是接口，获取唯一的实现类
                             Object extension = SPIExtensionLoader.loadExtension(c2);
@@ -220,13 +226,29 @@ public class FactoryBean implements AbstractFactory{
                         }else{
                             reflectionAndAnnotationHanlderCache(c2);
                         }
-                        f.set(beanMap.get(StrUtil.toLowerCaseFirstOne(className)),beanMapCache.get(f.getName()));
+                        writeAutowired(f,beanName);
                     }else{
-                        f.set(beanMap.get(StrUtil.toLowerCaseFirstOne(className)),beanMap.get(f.getName()));
+                        writeAutowired(f,beanName);
                     }
                 }
             }
         }
 
+    }
+
+    private void writeAutowired(Field f,String beanName) throws IllegalAccessException {
+        if(beanMapCache.containsKey(beanName)){
+            if(beanMap.containsKey(f.getName())){
+                f.set(beanMapCache.get(beanName),beanMap.get(f.getName()));
+            }else {
+                f.set(beanMapCache.get(beanName),beanMapCache.get(f.getName()));
+            }
+        }else {
+            if(beanMap.containsKey(f.getName())){
+                f.set(beanMap.get(beanName),beanMap.get(f.getName()));
+            } else{
+                f.set(beanMap.get(beanName),beanMapCache.get(f.getName()));
+            }
+        }
     }
 }

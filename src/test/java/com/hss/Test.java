@@ -3,6 +3,7 @@ package com.hss;
 import com.hss.factory.AbstractFactory;
 import com.hss.factory.FactoryBean;
 import com.hss.service.DeptService;
+import com.hss.service.EmpService;
 import org.junit.Before;
 
 import java.util.List;
@@ -19,7 +20,9 @@ public class Test {
 
     @org.junit.Test
     public void test(){
-        DeptService deptService = (DeptService)abstractFactory.getBeanByBeanName("deptService");
-        deptService.findDeptById(4396L);
+//        DeptService deptService = (DeptService)abstractFactory.getBeanByBeanName("deptService");
+//        deptService.findDeptById(4396L);
+        EmpService empService = (EmpService)abstractFactory.getBeanByBeanName("empService");
+        empService.findEmpById(4396L);
     }
 }
