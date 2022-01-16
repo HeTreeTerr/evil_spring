@@ -1,10 +1,10 @@
-package com.hss.annotation;
-
-import java.lang.annotation.*;
-
-@Target({ElementType.PARAMETER})
-@Retention(RetentionPolicy.RUNTIME)
-@Documented
-public @interface InterimParam {
-    String value() default "";
-}
+//package com.hss.annotation;
+//
+//import java.lang.annotation.*;
+//
+//@Target({ElementType.PARAMETER})
+//@Retention(RetentionPolicy.RUNTIME)
+//@Documented
+//public @interface InterimParam {
+//    String value() default "";
+//}

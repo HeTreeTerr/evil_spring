@@ -21,8 +21,8 @@ public class DeptController {
     }
 
     @RequestMapping(name = "/getDept")
-    public String getDept(@RequestParam(value = "name") @InterimParam String name,
-                          @RequestParam(value = "cardNo") @InterimParam String cardNo){
+    public String getDept(@RequestParam(value = "name") String name,
+                          @RequestParam(value = "cardNo") String cardNo){
         return "getDept param{" + name + "--"+ cardNo +"}";
     }
 }

@@ -5,6 +5,7 @@ import com.hss.annotation.RequestMapping;
 import com.hss.annotation.RequestParam;
 import com.hss.factory.AbstractFactory;
 import com.hss.factory.FactoryBean;
+import com.hss.handler.Handler;
 import com.hss.util.GridProperties;
 import com.hss.util.StrUtil;
 
@@ -20,10 +21,13 @@ import java.lang.reflect.Method;
 import java.net.URL;
 import java.net.URLDecoder;
 import java.util.*;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 public class DispatcherServlet extends HttpServlet {
 
-    private Map<String,Method> handlerMapping = new HashMap<String,Method>();
+    //保存所有的 Url 和方法的映射关系
+    private List<Handler> handlerMapping = new ArrayList<Handler>();
 
     private AbstractFactory abstractFactory = null;
 
@@ -43,60 +47,48 @@ public class DispatcherServlet extends HttpServlet {
     }
 
     public void doPost(HttpServletRequest req, HttpServletResponse resp) throws ServletException, IOException {
-        String url =  req.getRequestURI();
-        if(handlerMapping.containsKey(url)){
-            System.out.println("执行方法controller");
-            Method method = handlerMapping.get(url);
-            if(method==null){
-                try {
-                    throw  new Exception("404，没有找到对Action");
-                } catch (Exception e) {
-                    e.printStackTrace();
-                }
-
+        Handler handler = null;
+        try {
+            handler = getHandler(req);
+            if(handler == null){
+                resp.getWriter().write("404 Not Found!!!");
+                return;
             }
-            try {
-                // 获取用户的入参
-                Map<String, String[]> parameters = req.getParameterMap();
-                // 获取方法的形参列表
-                Class<?>[] parameterTypes = method.getParameterTypes();
-                // 实参
-                Object[] paramValues = new Object[parameterTypes.length];
-                // 赋予实参
-                for (int i = 0; i < parameterTypes.length; i++) {
-                    Class<?> parameterType = parameterTypes[i];
-                    // 不能用instanceof ,parameterType它不是实参而是形参
-                    if(parameterType == HttpServletRequest.class){
-                        paramValues[i] = req;
-                        continue;
-                    }else if(parameterType == HttpServletResponse.class){
-                        paramValues[i] = req;
-                        continue;
-                    }
-                    Annotation[][] pa = method.getParameterAnnotations();
-                    Annotation[] annotations = pa[i];
-                    for (Annotation a : annotations) {
-                        if(a instanceof RequestParam){
-                            String paramName = ((RequestParam)a).value();
-                            if(parameters.containsKey(paramName)){
-                                String value = Arrays.toString(parameters.get(paramName))
-                                        .replaceAll("\\[|\\]","")
-                                        .replaceAll("\\s","");
-                                paramValues[i] = this.convert(parameterType,value);
-                            }
-                        }
-                    }
-                }
 
-                String beanName = StrUtil.toLowerCaseFirstOne(method.getDeclaringClass().getSimpleName());
-                Object name = method.invoke(abstractFactory.getBeanMap().get(beanName), paramValues);
-                resp.setContentType("text/html;charset=UTF-8");
-                PrintWriter out = resp.getWriter();
-                out.println(name);
-                out.close();
-            } catch (Exception e) {
-                e.printStackTrace();
+            // 获取方法的形参列表
+            Class<?>[] parameterTypes = handler.parameterTypes;
+            // 实参
+            Object[] paramValues = new Object[parameterTypes.length];
+
+            Map<String, String[]> parameters = req.getParameterMap();
+            // 赋予实参
+            for (Map.Entry<String, String[]> param : parameters.entrySet()) {
+                String value = Arrays.toString(param.getValue()).replaceAll("\\[|\\]","")
+                        .replaceAll("\\s","");
+                if(!handler.paramIndexMapping.containsKey(param.getKey())){continue;}
+
+                Integer index = handler.paramIndexMapping.get(param.getKey());
+                paramValues[index] = convert(parameterTypes[index], value);
             }
+
+            if(handler.paramIndexMapping.containsKey(HttpServletRequest.class.getName())) {
+                int reqIndex = handler.paramIndexMapping.get(HttpServletRequest.class.getName());
+                paramValues[reqIndex] = req;
+            }
+
+            if(handler.paramIndexMapping.containsKey(HttpServletResponse.class.getName())) {
+                int respIndex = handler.paramIndexMapping.get(HttpServletResponse.class.getName());
+                paramValues[respIndex] = resp;
+            }
+            //执行方法
+            Object returnValue = handler.method.invoke(handler.controller,paramValues);
+            //返回结果
+            if(returnValue == null || returnValue instanceof Void){
+                return;
+            }
+            resp.getWriter().write(returnValue.toString());
+        } catch (Exception e) {
+            e.printStackTrace();
         }
 
     }
@@ -106,10 +98,10 @@ public class DispatcherServlet extends HttpServlet {
     }
 
     private void loadHandlerMapping() throws ClassNotFoundException {
-        List<String> classNames = abstractFactory.getClassNames();
-        if(classNames.isEmpty()){ return;}
-        for(String className:classNames){
-            Class<?> aClass = Class.forName(className);
+        Map<String, Object> ioc = abstractFactory.getBeanMap();
+        if(ioc.isEmpty()){ return; }
+        for (Map.Entry<String, Object> entry : ioc.entrySet()) {
+            Class<?> aClass = entry.getValue().getClass();
             if(!aClass.isAnnotationPresent(Controller.class)){continue;}
             Method[] methods = aClass.getMethods();
             for (Method method : methods){
@@ -118,15 +110,36 @@ public class DispatcherServlet extends HttpServlet {
                 }
                 String value = method.getAnnotation(RequestMapping.class).name();
                 //判断类上有没有RequestMapping标签
+                String url;
                 if(!aClass.isAnnotationPresent(RequestMapping.class)){
-                    handlerMapping.put(("/"+ value).replaceAll("/+","/"),method);
+                    url = ("/"+ value).replaceAll("/+","/");
                 }else {
-                    handlerMapping.put((aClass.getAnnotation(RequestMapping.class).name()+"/"+ value).replaceAll("/+","/"),method);
+                    url = (aClass.getAnnotation(RequestMapping.class).name()+"/"+ value).replaceAll("/+","/");
                 }
+                Pattern pattern = Pattern.compile(url);
+                handlerMapping.add(new Handler(pattern, entry.getValue(), method));
             }
         }
 
 
+    }
+
+    private Handler getHandler(HttpServletRequest req) throws Exception{
+        if(handlerMapping.isEmpty()){
+            return null;
+        }
+        String url = req.getRequestURI();
+        String contextPath = req.getContextPath();
+        url = url.replace(contextPath, "").replaceAll("/+", "/");
+        for (Handler handler : handlerMapping) {
+            try{Matcher matcher = handler.pattern.matcher(url);
+                //如果没有匹配上继续下一个匹配
+                 if(!matcher.matches()){ continue;
+                 } return handler;
+            }catch(Exception e){
+                throw e;
+            }
+        }return null;
     }
 
     /**
