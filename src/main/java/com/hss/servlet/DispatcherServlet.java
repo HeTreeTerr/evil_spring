@@ -129,16 +129,23 @@ public class DispatcherServlet extends HttpServlet {
 
     }
 
-//     url 传过来的参数都是 String 类型的，HTTP 是基于字符串协议
-//     只需要把 String 转换为任意类型就好
+    /**
+     * url 传过来的参数都是 String 类型的，HTTP 是基于字符串协议
+     *      只需要把 String 转换为任意类型就好
+     * @param type
+     * @param value
+     * @return
+     */
      private Object convert(Class<?> type,String value){
 //          如果是int
         if(Integer.class == type){
             return Integer.valueOf(value);
         }
-//     如果还有 double 或者其他类型，继续加 if
-//     这时候，我们应该想到策略模式了
-//     在这里暂时不实现，希望小伙伴自己来实现
+        /*
+            todo 如果还有 double 或者其他类型，继续加 if
+            这时候，我们应该想到策略模式了
+            在这里暂时不实现
+         */
         return value;
     }
 }
