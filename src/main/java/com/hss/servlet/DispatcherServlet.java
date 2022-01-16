@@ -2,6 +2,7 @@ package com.hss.servlet;
 
 import com.hss.annotation.Controller;
 import com.hss.annotation.RequestMapping;
+import com.hss.annotation.RequestParam;
 import com.hss.factory.AbstractFactory;
 import com.hss.factory.FactoryBean;
 import com.hss.util.GridProperties;
@@ -14,6 +15,7 @@ import javax.servlet.http.HttpServletResponse;
 import java.io.File;
 import java.io.IOException;
 import java.io.PrintWriter;
+import java.lang.annotation.Annotation;
 import java.lang.reflect.Method;
 import java.net.URL;
 import java.net.URLDecoder;
@@ -54,9 +56,40 @@ public class DispatcherServlet extends HttpServlet {
 
             }
             try {
+                // 获取用户的入参
+                Map<String, String[]> parameters = req.getParameterMap();
+                // 获取方法的形参列表
+                Class<?>[] parameterTypes = method.getParameterTypes();
+                // 实参
+                Object[] paramValues = new Object[parameterTypes.length];
+                // 赋予实参
+                for (int i = 0; i < parameterTypes.length; i++) {
+                    Class<?> parameterType = parameterTypes[i];
+                    // 不能用instanceof ,parameterType它不是实参而是形参
+                    if(parameterType == HttpServletRequest.class){
+                        paramValues[i] = req;
+                        continue;
+                    }else if(parameterType == HttpServletResponse.class){
+                        paramValues[i] = req;
+                        continue;
+                    }
+                    Annotation[][] pa = method.getParameterAnnotations();
+                    Annotation[] annotations = pa[i];
+                    for (Annotation a : annotations) {
+                        if(a instanceof RequestParam){
+                            String paramName = ((RequestParam)a).value();
+                            if(parameters.containsKey(paramName)){
+                                String value = Arrays.toString(parameters.get(paramName))
+                                        .replaceAll("\\[|\\]","")
+                                        .replaceAll("\\s","");
+                                paramValues[i] = this.convert(parameterType,value);
+                            }
+                        }
+                    }
+                }
+
                 String beanName = StrUtil.toLowerCaseFirstOne(method.getDeclaringClass().getSimpleName());
-                // todo 参数还是死的
-                Object name = method.invoke(abstractFactory.getBeanMap().get(beanName), new Object[]{ req.getParameterValues("id")[0]});
+                Object name = method.invoke(abstractFactory.getBeanMap().get(beanName), paramValues);
                 resp.setContentType("text/html;charset=UTF-8");
                 PrintWriter out = resp.getWriter();
                 out.println(name);
@@ -94,5 +127,18 @@ public class DispatcherServlet extends HttpServlet {
         }
 
 
+    }
+
+//     url 传过来的参数都是 String 类型的，HTTP 是基于字符串协议
+//     只需要把 String 转换为任意类型就好
+     private Object convert(Class<?> type,String value){
+//          如果是int
+        if(Integer.class == type){
+            return Integer.valueOf(value);
+        }
+//     如果还有 double 或者其他类型，继续加 if
+//     这时候，我们应该想到策略模式了
+//     在这里暂时不实现，希望小伙伴自己来实现
+        return value;
     }
 }

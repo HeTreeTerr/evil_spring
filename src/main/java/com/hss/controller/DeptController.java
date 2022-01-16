@@ -1,8 +1,6 @@
 package com.hss.controller;
 
-import com.hss.annotation.Autowired;
-import com.hss.annotation.Controller;
-import com.hss.annotation.RequestMapping;
+import com.hss.annotation.*;
 import com.hss.service.DeptService;
 import com.hss.service.impl.DeptServiceImpl;
 
@@ -17,8 +15,14 @@ public class DeptController {
     public DeptService deptService;
 
     @RequestMapping(name = "/spring")
-    public String helloSpring(String id){
+    public String helloSpring(@RequestParam(value = "id") String id){
         deptService.findDeptById(Long.valueOf(id));
         return "hello Spring";
+    }
+
+    @RequestMapping(name = "/getDept")
+    public String getDept(@RequestParam(value = "name") @InterimParam String name,
+                          @RequestParam(value = "cardNo") @InterimParam String cardNo){
+        return "getDept param{" + name + "--"+ cardNo +"}";
     }
 }
